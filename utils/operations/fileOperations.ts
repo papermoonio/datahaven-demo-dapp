@@ -4,19 +4,11 @@ import type { FileInfo } from '@storagehub-sdk/core';
 import { TypeRegistry } from '@polkadot/types';
 import type { AccountId20, H256 } from '@polkadot/types/interfaces';
 import type { FileListResponse } from '@storagehub-sdk/msp-client';
-import {
-  getStorageHubClient,
-  getConnectedAddress,
-  getPublicClient,
-  getPolkadotApi,
-} from './clientService';
-import { getMspClient, getMspInfo, authenticateUser, isAuthenticated } from './mspService';
+import { getStorageHubClient, getConnectedAddress, getPublicClient, getPolkadotApi } from '../services/clientService';
+import { getMspClient, getMspInfo, authenticateUser, isAuthenticated } from '../services/mspService';
 
 // Upload a file
-export async function uploadFile(
-  bucketId: string,
-  file: File
-): Promise<{ fileKey: string; uploadReceipt: unknown }> {
+export async function uploadFile(bucketId: string, file: File): Promise<{ fileKey: string; uploadReceipt: unknown }> {
   const storageHubClient = getStorageHubClient();
   const publicClient = getPublicClient();
   const polkadotApi = getPolkadotApi();
@@ -109,13 +101,7 @@ export async function uploadFile(
 
   // Upload file to MSP
   const fileBlob = await fileManager.getFileBlob();
-  const uploadReceipt = await mspClient.files.uploadFile(
-    bucketId,
-    fileKey.toHex(),
-    fileBlob,
-    address,
-    file.name
-  );
+  const uploadReceipt = await mspClient.files.uploadFile(bucketId, fileKey.toHex(), fileBlob, address, file.name);
 
   if (uploadReceipt.status !== 'upload_successful') {
     throw new Error('File upload to MSP failed');
@@ -153,10 +139,7 @@ export async function waitForMSPConfirmOnChain(fileKey: string): Promise<void> {
 }
 
 // Wait for backend to mark file as ready
-export async function waitForBackendFileReady(
-  bucketId: string,
-  fileKey: string
-): Promise<FileInfo> {
+export async function waitForBackendFileReady(bucketId: string, fileKey: string): Promise<FileInfo> {
   const mspClient = getMspClient();
   const maxAttempts = 60; // 5 minutes with 5s delay
   const delayMs = 5000;

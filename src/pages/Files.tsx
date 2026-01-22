@@ -13,7 +13,7 @@ import {
   requestDeleteFile,
   getBucketFilesFromMSP,
   getFileInfo,
-} from '../services/fileOperations';
+} from '../../utils/operations/fileOperations';
 import type { Bucket, FileUploadProgress } from '../types';
 import type { FileInfo } from '@storagehub-sdk/core';
 
@@ -239,10 +239,10 @@ export function Files() {
         uploadProgress.step === 'error' && index === currentStep
           ? 'error'
           : index < currentStep
-          ? 'completed'
-          : index === currentStep
-          ? 'active'
-          : 'pending',
+            ? 'completed'
+            : index === currentStep
+              ? 'active'
+              : 'pending',
     })) as { label: string; status: 'pending' | 'active' | 'completed' | 'error' }[];
   };
 
@@ -274,9 +274,7 @@ export function Files() {
     return (
       <div className="text-center py-12">
         <h2 className="text-xl font-semibold text-white mb-2">Authentication Required</h2>
-        <p className="text-gray-400">
-          Please connect your wallet and authenticate on the Dashboard first.
-        </p>
+        <p className="text-gray-400">Please connect your wallet and authenticate on the Dashboard first.</p>
         <a href="/" className="mt-4 inline-block text-blue-400 hover:text-blue-300">
           Go to Dashboard
         </a>
@@ -334,7 +332,10 @@ export function Files() {
                 type="file"
                 onChange={handleFileSelect}
                 className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer"
-                disabled={!selectedBucketId || (uploadProgress.step !== 'idle' && uploadProgress.step !== 'done' && uploadProgress.step !== 'error')}
+                disabled={
+                  !selectedBucketId ||
+                  (uploadProgress.step !== 'idle' && uploadProgress.step !== 'done' && uploadProgress.step !== 'error')
+                }
               />
             </div>
 
@@ -347,8 +348,14 @@ export function Files() {
 
             <Button
               onClick={handleUpload}
-              isLoading={uploadProgress.step !== 'idle' && uploadProgress.step !== 'done' && uploadProgress.step !== 'error'}
-              disabled={!selectedUploadFile || !selectedBucketId || (uploadProgress.step !== 'idle' && uploadProgress.step !== 'done' && uploadProgress.step !== 'error')}
+              isLoading={
+                uploadProgress.step !== 'idle' && uploadProgress.step !== 'done' && uploadProgress.step !== 'error'
+              }
+              disabled={
+                !selectedUploadFile ||
+                !selectedBucketId ||
+                (uploadProgress.step !== 'idle' && uploadProgress.step !== 'done' && uploadProgress.step !== 'error')
+              }
               className="w-full"
             >
               Upload File
@@ -372,15 +379,11 @@ export function Files() {
             </div>
 
             {!selectedBucketId ? (
-              <div className="text-center py-8 text-gray-400">
-                Select a bucket to view files.
-              </div>
+              <div className="text-center py-8 text-gray-400">Select a bucket to view files.</div>
             ) : isLoadingFiles ? (
               <div className="text-center py-8 text-gray-400">Loading files...</div>
             ) : files.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                No files in this bucket. Upload your first file.
-              </div>
+              <div className="text-center py-8 text-gray-400">No files in this bucket. Upload your first file.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -394,16 +397,9 @@ export function Files() {
                   </thead>
                   <tbody>
                     {files.map((file) => (
-                      <tr
-                        key={file.fileKey}
-                        className="border-b border-gray-700/50 hover:bg-gray-700/30"
-                      >
-                        <td className="py-3 px-4 text-sm text-white">
-                          {file.name || truncateHash(file.fileKey)}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-300">
-                          {formatFileSize(file.size)}
-                        </td>
+                      <tr key={file.fileKey} className="border-b border-gray-700/50 hover:bg-gray-700/30">
+                        <td className="py-3 px-4 text-sm text-white">{file.name || truncateHash(file.fileKey)}</td>
+                        <td className="py-3 px-4 text-sm text-gray-300">{formatFileSize(file.size)}</td>
                         <td className="py-3 px-4">{getStatusBadge(file.status)}</td>
                         <td className="py-3 px-4 text-right space-x-2">
                           <Button
