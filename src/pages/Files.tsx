@@ -15,13 +15,14 @@ import {
   getFileInfo,
 } from '../../utils/operations/fileOperations';
 import type { Bucket, FileUploadProgress } from '../types';
-import type { FileInfo } from '@storagehub-sdk/core';
+import type { StorageFileInfo } from '@storagehub-sdk/msp-client';
 
 interface FileEntry {
-  fileKey: string;
-  name?: string;
+  fileKey?: string;
+  name: string;
   size?: number;
   status?: string;
+  type: 'file' | 'folder';
 }
 
 export function Files() {
@@ -30,12 +31,13 @@ export function Files() {
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [selectedBucketId, setSelectedBucketId] = useState<string>('');
   const [files, setFiles] = useState<FileEntry[]>([]);
-  const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
+  const [selectedFile, setSelectedFile] = useState<StorageFileInfo | null>(null);
   const [isLoadingBuckets, setIsLoadingBuckets] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isLoadingFileInfo, setIsLoadingFileInfo] = useState(false);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [pendingDeletions, setPendingDeletions] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   // File upload
@@ -71,16 +73,53 @@ export function Files() {
     setError(null);
     try {
       const response = await getBucketFilesFromMSP(selectedBucketId);
-      // The response is a FileListResponse, transform it to our FileEntry format
-      // FileTree has type 'file' or 'folder', we only want files
-      const fileList: FileEntry[] = (response.files || [])
-        .filter((f): f is Extract<typeof f, { type: 'file' }> => 'type' in f && f.type === 'file')
-        .map((f) => ({
-          fileKey: f.fileKey,
-          name: f.name,
-          size: f.sizeBytes,
-          status: f.status,
-        }));
+      console.log('getBucketFilesFromMSP response:', response);
+
+      // The response has a tree structure - we need to flatten it recursively
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const flattenTree = (items: any[], path: string = ''): FileEntry[] => {
+        const result: FileEntry[] = [];
+        for (const item of items) {
+          const fullPath = path ? `${path}/${item.name}` : item.name;
+
+          if ('fileKey' in item) {
+            // It's a file
+            result.push({
+              fileKey: item.fileKey,
+              name: item.name,
+              size: item.sizeBytes,
+              status: item.status,
+              type: 'file',
+            });
+          } else if (item.children && Array.isArray(item.children)) {
+            // It's a folder with children - recurse into it
+            // Skip the root "/" folder itself but process its children
+            if (item.name === '/') {
+              result.push(...flattenTree(item.children, ''));
+            } else {
+              // Add the folder itself
+              result.push({
+                name: fullPath,
+                type: 'folder',
+              });
+              // Add its children
+              result.push(...flattenTree(item.children, fullPath));
+            }
+          } else {
+            // It's an empty folder
+            if (item.name !== '/') {
+              result.push({
+                name: fullPath,
+                type: 'folder',
+              });
+            }
+          }
+        }
+        return result;
+      };
+
+      const fileList = flattenTree(response.files || []);
+      console.log('Mapped fileList:', fileList);
       setFiles(fileList);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load files');
@@ -100,6 +139,46 @@ export function Files() {
       loadFiles();
     }
   }, [selectedBucketId, loadFiles]);
+
+  // Poll for pending deletions until files are fully deleted
+  useEffect(() => {
+    if (pendingDeletions.size === 0 || !selectedBucketId) return;
+
+    const pollInterval = setInterval(async () => {
+      const stillPending = new Set<string>();
+
+      for (const fileKey of pendingDeletions) {
+        try {
+          const fileInfo = await getFileInfo(selectedBucketId, fileKey);
+          // File still exists with deletionInProgress status - keep polling
+          if (fileInfo.status === 'deletionInProgress') {
+            stillPending.add(fileKey);
+          }
+          // Other statuses mean deletion completed or was cancelled
+        } catch {
+          // File no longer exists (404) - deletion complete
+        }
+      }
+
+      // Update pending deletions
+      setPendingDeletions(stillPending);
+
+      // Refresh file list to show updated statuses
+      await loadFiles();
+
+      // If selected file was being deleted, refresh or clear it
+      if (selectedFile && pendingDeletions.has(selectedFile.fileKey)) {
+        try {
+          const updatedInfo = await getFileInfo(selectedBucketId, selectedFile.fileKey);
+          setSelectedFile(updatedInfo);
+        } catch {
+          setSelectedFile(null);
+        }
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [pendingDeletions, selectedBucketId, loadFiles, selectedFile]);
 
   const handleBucketChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBucketId(e.target.value);
@@ -202,9 +281,22 @@ export function Files() {
     setError(null);
     try {
       await requestDeleteFile(selectedBucketId, fileKey);
+
+      // Add to pending deletions for polling
+      setPendingDeletions((prev) => new Set(prev).add(fileKey));
+
+      // Reload files to get updated statuses
       await loadFiles();
+
+      // If this file was selected, refresh its info to show new status
       if (selectedFile?.fileKey === fileKey) {
-        setSelectedFile(null);
+        try {
+          const updatedInfo = await getFileInfo(selectedBucketId, fileKey);
+          setSelectedFile(updatedInfo);
+        } catch {
+          // File may no longer exist, clear selection
+          setSelectedFile(null);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete file');
@@ -255,12 +347,19 @@ export function Files() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const getStatusBadge = (status?: string) => {
+  const getStatusBadge = (status?: string, fileKey?: string) => {
+    // Check if file is pending deletion (local state takes precedence)
+    if (fileKey && pendingDeletions.has(fileKey)) {
+      return <StatusBadge status="pending" label="Deleting..." />;
+    }
+
     switch (status) {
       case 'ready':
         return <StatusBadge status="ready" />;
       case 'pending':
         return <StatusBadge status="pending" />;
+      case 'deletionInProgress':
+        return <StatusBadge status="pending" label="Deleting..." />;
       case 'rejected':
       case 'revoked':
       case 'expired':
@@ -396,37 +495,67 @@ export function Files() {
                     </tr>
                   </thead>
                   <tbody>
-                    {files.map((file) => (
-                      <tr key={file.fileKey} className="border-b border-gray-700/50 hover:bg-gray-700/30">
-                        <td className="py-3 px-4 text-sm text-white">{file.name || truncateHash(file.fileKey)}</td>
-                        <td className="py-3 px-4 text-sm text-gray-300">{formatFileSize(file.size)}</td>
-                        <td className="py-3 px-4">{getStatusBadge(file.status)}</td>
+                    {files.map((file, index) => (
+                      <tr
+                        key={file.fileKey || `folder-${index}`}
+                        className="border-b border-gray-700/50 hover:bg-gray-700/30"
+                      >
+                        <td className="py-3 px-4 text-sm text-white flex items-center gap-2">
+                          {file.type === 'folder' ? (
+                            <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                          {file.name || (file.fileKey ? truncateHash(file.fileKey) : 'Unknown')}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-300">
+                          {file.type === 'folder' ? '-' : formatFileSize(file.size)}
+                        </td>
+                        <td className="py-3 px-4">
+                          {file.type === 'folder' ? (
+                            <span className="text-gray-500 text-sm">Folder</span>
+                          ) : (
+                            getStatusBadge(file.status, file.fileKey)
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-right space-x-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleViewFile(file.fileKey)}
-                            isLoading={isLoadingFileInfo}
-                          >
-                            Info
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleDownload(file.fileKey, file.name)}
-                            isLoading={isDownloading === file.fileKey}
-                            disabled={file.status !== 'ready'}
-                          >
-                            Download
-                          </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => handleDelete(file.fileKey)}
-                            isLoading={isDeleting === file.fileKey}
-                          >
-                            Delete
-                          </Button>
+                          {file.type === 'file' && file.fileKey && (
+                            <>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleViewFile(file.fileKey!)}
+                                isLoading={isLoadingFileInfo}
+                              >
+                                Info
+                              </Button>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => handleDownload(file.fileKey!, file.name)}
+                                isLoading={isDownloading === file.fileKey}
+                                disabled={file.status !== 'ready'}
+                              >
+                                Download
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleDelete(file.fileKey!)}
+                                isLoading={isDeleting === file.fileKey}
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))}

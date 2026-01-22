@@ -1,6 +1,7 @@
 import { defineChain, createPublicClient, createWalletClient, http, custom } from 'viem';
 import type { Chain, EIP1193Provider } from 'viem';
 import { StorageHubClient } from '@storagehub-sdk/core';
+import type { EvmWriteOptions } from '@storagehub-sdk/core';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { types } from '@storagehub/types-bundle';
 import { NETWORKS } from '../../src/config/networks';
@@ -55,6 +56,38 @@ export function getPublicClient() {
   return publicClientInstance;
 }
 
+// Switch wallet to the correct network
+async function switchToCorrectNetwork(provider: EIP1193Provider): Promise<void> {
+  const chainIdHex = NETWORKS.testnet.idHex;
+
+  try {
+    // Try to switch to the network
+    await provider.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: chainIdHex }],
+    });
+  } catch (switchError: unknown) {
+    // Error code 4902 means the chain hasn't been added to the wallet
+    const error = switchError as { code?: number };
+    if (error.code === 4902) {
+      // Add the network to the wallet
+      await provider.request({
+        method: 'wallet_addEthereumChain',
+        params: [
+          {
+            chainId: chainIdHex,
+            chainName: NETWORKS.testnet.name,
+            nativeCurrency: NETWORKS.testnet.nativeCurrency,
+            rpcUrls: [NETWORKS.testnet.rpcUrl],
+          },
+        ],
+      });
+    } else {
+      throw switchError;
+    }
+  }
+}
+
 // Connect wallet using browser extension (MetaMask, etc.)
 export async function connectWallet(): Promise<`0x${string}`> {
   const provider = getEthereumProvider();
@@ -67,6 +100,9 @@ export async function connectWallet(): Promise<`0x${string}`> {
   if (!accounts || accounts.length === 0) {
     throw new Error('No accounts found. Please connect your wallet.');
   }
+
+  // Switch to the correct network
+  await switchToCorrectNetwork(provider);
 
   connectedAddress = accounts[0] as `0x${string}`;
 
@@ -164,6 +200,9 @@ export async function restoreWalletConnection(): Promise<`0x${string}` | null> {
       return null;
     }
 
+    // Switch to the correct network
+    await switchToCorrectNetwork(provider);
+
     // Re-establish wallet client
     walletClientInstance = createWalletClient({
       chain,
@@ -205,4 +244,22 @@ export async function disconnectPolkadotApi() {
     await polkadotApiInstance.disconnect();
     polkadotApiInstance = null;
   }
+}
+
+// Build gas transaction options based on current network conditions
+export async function buildGasTxOpts(): Promise<EvmWriteOptions> {
+  const publicClient = getPublicClient();
+  const gas = BigInt('1500000');
+
+  // EIP-1559 fees based on latest block
+  const latestBlock = await publicClient.getBlock({ blockTag: 'latest' });
+  const baseFeePerGas = latestBlock.baseFeePerGas;
+  if (baseFeePerGas == null) {
+    throw new Error('RPC did not return baseFeePerGas for the latest block. Cannot build EIP-1559 fees.');
+  }
+
+  const maxPriorityFeePerGas = BigInt('1500000000'); // 1.5 gwei
+  const maxFeePerGas = baseFeePerGas * BigInt(2) + maxPriorityFeePerGas;
+
+  return { gas, maxFeePerGas, maxPriorityFeePerGas };
 }

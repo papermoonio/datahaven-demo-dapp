@@ -3,8 +3,14 @@ import { FileManager, ReplicationLevel } from '@storagehub-sdk/core';
 import type { FileInfo } from '@storagehub-sdk/core';
 import { TypeRegistry } from '@polkadot/types';
 import type { AccountId20, H256 } from '@polkadot/types/interfaces';
-import type { FileListResponse } from '@storagehub-sdk/msp-client';
-import { getStorageHubClient, getConnectedAddress, getPublicClient, getPolkadotApi } from '../services/clientService';
+import type { FileListResponse, StorageFileInfo } from '@storagehub-sdk/msp-client';
+import {
+  getStorageHubClient,
+  getConnectedAddress,
+  getPublicClient,
+  getPolkadotApi,
+  buildGasTxOpts,
+} from '../services/clientService';
 import { getMspClient, getMspInfo, authenticateUser, isAuthenticated } from '../services/mspService';
 
 // Upload a file
@@ -58,6 +64,9 @@ export async function uploadFile(bucketId: string, file: File): Promise<{ fileKe
   const replicationLevel = ReplicationLevel.Custom;
   const replicas = 1;
 
+  // Build gas options based on current network conditions
+  const gasTxOpts = await buildGasTxOpts();
+
   const txHash: `0x${string}` | undefined = await storageHubClient.issueStorageRequest(
     bucketId as `0x${string}`,
     file.name,
@@ -66,7 +75,8 @@ export async function uploadFile(bucketId: string, file: File): Promise<{ fileKe
     mspId as `0x${string}`,
     peerIds,
     replicationLevel,
-    replicas
+    replicas,
+    gasTxOpts
   );
 
   if (!txHash) {
@@ -201,8 +211,11 @@ export async function requestDeleteFile(bucketId: string, fileKey: string): Prom
   // Get file info before deletion
   const fileInfo: FileInfo = await mspClient.files.getFileInfo(bucketId, fileKey);
 
+  // Build gas options based on current network conditions
+  const gasTxOpts = await buildGasTxOpts();
+
   // Request file deletion
-  const txHash: `0x${string}` = await storageHubClient.requestDeleteFile(fileInfo);
+  const txHash: `0x${string}` = await storageHubClient.requestDeleteFile(fileInfo, gasTxOpts);
 
   // Wait for transaction receipt
   const receipt = await publicClient.waitForTransactionReceipt({
@@ -224,7 +237,7 @@ export async function getBucketFilesFromMSP(bucketId: string): Promise<FileListR
 }
 
 // Get file info
-export async function getFileInfo(bucketId: string, fileKey: string): Promise<FileInfo> {
+export async function getFileInfo(bucketId: string, fileKey: string): Promise<StorageFileInfo> {
   const mspClient = getMspClient();
   const fileInfo = await mspClient.files.getFileInfo(bucketId, fileKey);
   return fileInfo;

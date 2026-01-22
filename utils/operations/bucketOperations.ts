@@ -1,10 +1,20 @@
 import type { Bucket } from '@storagehub-sdk/msp-client';
-import { getStorageHubClient, getConnectedAddress, getPublicClient, getPolkadotApi } from '../services/clientService';
+import {
+  getStorageHubClient,
+  getConnectedAddress,
+  getPublicClient,
+  getPolkadotApi,
+  buildGasTxOpts,
+} from '../services/clientService';
 import { getMspInfo, getValueProps, getMspClient } from '../services/mspService';
 import type { BucketInfo } from '../../src/types';
+import type { TransactionReceipt } from 'viem';
 
 // Create a new bucket
-export async function createBucket(bucketName: string): Promise<{ bucketId: string; txReceipt: unknown }> {
+export async function createBucket(
+  bucketName: string,
+  isPrivate: boolean = false
+): Promise<{ bucketId: string; txReceipt: TransactionReceipt }> {
   const storageHubClient = getStorageHubClient();
   const address = getConnectedAddress();
   const publicClient = getPublicClient();
@@ -27,14 +37,16 @@ export async function createBucket(bucketName: string): Promise<{ bucketId: stri
     throw new Error(`Bucket already exists: ${bucketId}`);
   }
 
-  const isPrivate = false;
+  // Build gas options based on current network conditions
+  const gasTxOpts = await buildGasTxOpts();
 
   // Create bucket on chain
   const txHash: `0x${string}` | undefined = await storageHubClient.createBucket(
     mspId as `0x${string}`,
     bucketName,
     isPrivate,
-    valuePropId
+    valuePropId,
+    gasTxOpts
   );
 
   if (!txHash) {
@@ -109,7 +121,13 @@ export async function deleteBucket(bucketId: string): Promise<boolean> {
   const storageHubClient = getStorageHubClient();
   const publicClient = getPublicClient();
 
-  const txHash: `0x${string}` | undefined = await storageHubClient.deleteBucket(bucketId as `0x${string}`);
+  // Build gas options based on current network conditions
+  const gasTxOpts = await buildGasTxOpts();
+
+  const txHash: `0x${string}` | undefined = await storageHubClient.deleteBucket(
+    bucketId as `0x${string}`,
+    gasTxOpts
+  );
 
   if (!txHash) {
     throw new Error('deleteBucket() did not return a transaction hash');

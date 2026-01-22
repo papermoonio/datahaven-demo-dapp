@@ -26,6 +26,7 @@ export function Buckets() {
 
   // Create bucket form
   const [bucketName, setBucketName] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [createProgress, setCreateProgress] = useState<BucketCreationProgress>({
     step: 'idle',
     message: '',
@@ -74,7 +75,7 @@ export function Buckets() {
     try {
       // Step 1: Create bucket on-chain
       setCreateProgress({ step: 'creating', message: 'Creating bucket on-chain...' });
-      const { bucketId } = await createBucket(bucketName);
+      const { bucketId } = await createBucket(bucketName, isPrivate);
 
       // Step 2: Verify on-chain
       setCreateProgress({ step: 'verifying', message: 'Verifying bucket on-chain...' });
@@ -202,6 +203,40 @@ export function Buckets() {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Privacy</label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPrivate(false)}
+                  disabled={
+                    createProgress.step !== 'idle' && createProgress.step !== 'done' && createProgress.step !== 'error'
+                  }
+                  className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    !isPrivate
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'bg-gray-900 border-gray-700 text-gray-400 hover:border-gray-600'
+                  }`}
+                >
+                  Public
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPrivate(true)}
+                  disabled={
+                    createProgress.step !== 'idle' && createProgress.step !== 'done' && createProgress.step !== 'error'
+                  }
+                  className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    isPrivate
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'bg-gray-900 border-gray-700 text-gray-400 hover:border-gray-600'
+                  }`}
+                >
+                  Private
+                </button>
+              </div>
+            </div>
+
             <Button
               type="submit"
               isLoading={
@@ -287,43 +322,77 @@ export function Buckets() {
         </Card>
       </div>
 
-      {/* Bucket Info Panel */}
-      {selectedBucket && (
-        <Card title="Bucket Details">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-900 rounded-lg p-4">
-              <p className="text-xs text-gray-500 mb-1">Bucket ID</p>
-              <p className="text-sm font-mono text-gray-300 break-all">{selectedBucketId}</p>
+      {/* Bucket Details Modal */}
+      {(selectedBucket || isLoadingBucketInfo) && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            if (!isLoadingBucketInfo) {
+              setSelectedBucket(null);
+              setSelectedBucketId(null);
+            }
+          }}
+        >
+          <div
+            className="bg-gray-800 border border-gray-700 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-700">
+              <h3 className="text-lg font-semibold text-white">Bucket Details</h3>
+              <button
+                onClick={() => {
+                  setSelectedBucket(null);
+                  setSelectedBucketId(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+                disabled={isLoadingBucketInfo}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div className="bg-gray-900 rounded-lg p-4">
-              <p className="text-xs text-gray-500 mb-1">Owner (User ID)</p>
-              <p className="text-sm font-mono text-gray-300 break-all">{selectedBucket.userId}</p>
+            <div className="p-4">
+              {isLoadingBucketInfo ? (
+                <div className="text-center py-8 text-gray-400">Loading bucket details...</div>
+              ) : selectedBucket ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <p className="text-xs text-gray-500 mb-1">Bucket ID</p>
+                    <p className="text-sm font-mono text-gray-300 break-all">{selectedBucketId}</p>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <p className="text-xs text-gray-500 mb-1">Owner (User ID)</p>
+                    <p className="text-sm font-mono text-gray-300 break-all">{selectedBucket.userId}</p>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <p className="text-xs text-gray-500 mb-1">MSP ID</p>
+                    <p className="text-sm font-mono text-gray-300 break-all">{selectedBucket.mspId}</p>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <p className="text-xs text-gray-500 mb-1">Privacy</p>
+                    <StatusBadge
+                      status={selectedBucket.private ? 'pending' : 'healthy'}
+                      label={selectedBucket.private ? 'Private' : 'Public'}
+                    />
+                  </div>
+                  {selectedBucket.root && (
+                    <div className="bg-gray-900 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 mb-1">Root Hash</p>
+                      <p className="text-sm font-mono text-gray-300 break-all">{selectedBucket.root}</p>
+                    </div>
+                  )}
+                  {selectedBucket.valuePropositionId && (
+                    <div className="bg-gray-900 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 mb-1">Value Proposition ID</p>
+                      <p className="text-sm font-mono text-gray-300 break-all">{selectedBucket.valuePropositionId}</p>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
-            <div className="bg-gray-900 rounded-lg p-4">
-              <p className="text-xs text-gray-500 mb-1">MSP ID</p>
-              <p className="text-sm font-mono text-gray-300 break-all">{selectedBucket.mspId}</p>
-            </div>
-            <div className="bg-gray-900 rounded-lg p-4">
-              <p className="text-xs text-gray-500 mb-1">Privacy</p>
-              <StatusBadge
-                status={selectedBucket.private ? 'pending' : 'healthy'}
-                label={selectedBucket.private ? 'Private' : 'Public'}
-              />
-            </div>
-            {selectedBucket.root && (
-              <div className="bg-gray-900 rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">Root Hash</p>
-                <p className="text-sm font-mono text-gray-300 break-all">{selectedBucket.root}</p>
-              </div>
-            )}
-            {selectedBucket.valuePropositionId && (
-              <div className="bg-gray-900 rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">Value Proposition ID</p>
-                <p className="text-sm font-mono text-gray-300 break-all">{selectedBucket.valuePropositionId}</p>
-              </div>
-            )}
           </div>
-        </Card>
+        </div>
       )}
     </div>
   );
