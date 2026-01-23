@@ -15,6 +15,8 @@ import {
   getFileInfo,
 } from '../operations';
 import { InfoIcon, DownloadIcon, TrashIcon, FolderIcon, FileIcon } from '../components/Icons';
+import { SplitLayout } from '../components/SplitLayout';
+import { fileSnippets } from '../config/codeSnippets';
 import type { Bucket, FileUploadProgress } from '../types';
 import type { StorageFileInfo } from '@storagehub-sdk/msp-client';
 
@@ -39,6 +41,7 @@ export function Files() {
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeSnippet, setActiveSnippet] = useState('listFiles');
 
   // File upload
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -345,12 +348,14 @@ export function Files() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Files</h1>
-        <p className="mt-1 text-dh-300">Upload, download, and manage files in your buckets.</p>
-      </div>
-
+    <SplitLayout
+      snippets={fileSnippets}
+      defaultSnippetId="listFiles"
+      pageTitle="Files"
+      pageDescription="Upload, download, and manage files in your buckets."
+      activeSnippetId={activeSnippet}
+      onSnippetChange={setActiveSnippet}
+    >
       {/* Error Alert */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
@@ -385,7 +390,7 @@ export function Files() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Upload Form */}
-        <Card title="Upload File" className="lg:col-span-1">
+        <Card title="Upload File" className="lg:col-span-1" onClick={() => setActiveSnippet('uploadFile')}>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-dh-200 mb-2">Select File</label>
@@ -432,7 +437,7 @@ export function Files() {
         </Card>
 
         {/* File List */}
-        <Card title="Files in Bucket (Folder)" className="lg:col-span-2">
+        <Card title="Files in Bucket (Folder)" className="lg:col-span-2" onClick={() => setActiveSnippet('listFiles')}>
           <div className="space-y-4">
             <div className="flex justify-end">
               <Button variant="secondary" size="sm" onClick={loadFiles} isLoading={isLoadingFiles}>
@@ -493,7 +498,10 @@ export function Files() {
                                 <InfoIcon />
                               </button>
                               <button
-                                onClick={() => handleDownload(file.fileKey!, file.name)}
+                                onClick={() => {
+                                  setActiveSnippet('downloadFile');
+                                  handleDownload(file.fileKey!, file.name);
+                                }}
                                 disabled={isDownloading === file.fileKey || file.status !== 'ready'}
                                 className="p-2 rounded-lg text-dh-300 hover:text-green-400 hover:bg-dh-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 title="Download"
@@ -501,7 +509,10 @@ export function Files() {
                                 <DownloadIcon />
                               </button>
                               <button
-                                onClick={() => handleDelete(file.fileKey!)}
+                                onClick={() => {
+                                  setActiveSnippet('deleteFile');
+                                  handleDelete(file.fileKey!);
+                                }}
                                 disabled={isDeleting === file.fileKey}
                                 className="p-2 rounded-lg text-dh-300 hover:text-red-400 hover:bg-dh-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 title="Delete"
@@ -550,6 +561,6 @@ export function Files() {
           </div>
         </Card>
       )}
-    </div>
+    </SplitLayout>
   );
 }

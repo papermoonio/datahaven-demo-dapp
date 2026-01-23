@@ -12,6 +12,8 @@ import {
   getBucketsFromMSP,
 } from '../operations';
 import { EyeIcon, TrashIcon } from '../components/Icons';
+import { SplitLayout } from '../components/SplitLayout';
+import { bucketSnippets } from '../config/codeSnippets';
 import type { Bucket, BucketInfo, BucketCreationProgress } from '../types';
 
 export function Buckets() {
@@ -24,6 +26,8 @@ export function Buckets() {
   const [isLoadingBucketInfo, setIsLoadingBucketInfo] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [activeSnippet, setActiveSnippet] = useState('listBuckets');
 
   // Create bucket form
   const [bucketName, setBucketName] = useState('');
@@ -172,12 +176,14 @@ export function Buckets() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Buckets (Folders)</h1>
-        <p className="mt-1 text-dh-300">Create and manage your storage buckets (folders).</p>
-      </div>
-
+    <SplitLayout
+      snippets={bucketSnippets}
+      defaultSnippetId="listBuckets"
+      pageTitle="Buckets (Folders)"
+      pageDescription="Create and manage your storage buckets (folders)."
+      activeSnippetId={activeSnippet}
+      onSnippetChange={setActiveSnippet}
+    >
       {/* Error Alert */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
@@ -187,7 +193,7 @@ export function Buckets() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Create Bucket Form */}
-        <Card title="Create Bucket (Folder)" className="lg:col-span-1">
+        <Card title="Create Bucket (Folder)" className="lg:col-span-1" onClick={() => setActiveSnippet('createBucket')}>
           <form onSubmit={handleCreateBucket} className="space-y-4">
             <div>
               <label htmlFor="bucketName" className="block text-sm font-medium text-dh-200 mb-1">
@@ -263,7 +269,7 @@ export function Buckets() {
         </Card>
 
         {/* Bucket List */}
-        <Card title="Your Buckets (Folders)" className="lg:col-span-2">
+        <Card title="Your Buckets (Folders)" className="lg:col-span-2" onClick={() => setActiveSnippet('listBuckets')}>
           <div className="space-y-4">
             <div className="flex justify-end">
               <Button variant="secondary" size="sm" onClick={loadBuckets} isLoading={isLoadingBuckets}>
@@ -308,7 +314,10 @@ export function Buckets() {
                               <EyeIcon />
                             </button>
                             <button
-                              onClick={() => handleDeleteBucket(bucket.bucketId)}
+                              onClick={() => {
+                                setActiveSnippet('deleteBucket');
+                                handleDeleteBucket(bucket.bucketId);
+                              }}
                               disabled={isDeleting === bucket.bucketId}
                               className="p-2 rounded-lg text-dh-300 hover:text-red-400 hover:bg-dh-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               title="Delete"
@@ -399,6 +408,6 @@ export function Buckets() {
           </div>
         </div>
       )}
-    </div>
+    </SplitLayout>
   );
 }

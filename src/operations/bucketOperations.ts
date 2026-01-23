@@ -124,10 +124,7 @@ export async function deleteBucket(bucketId: string): Promise<boolean> {
   // Build gas options based on current network conditions
   const gasTxOpts = await buildGasTxOpts();
 
-  const txHash: `0x${string}` | undefined = await storageHubClient.deleteBucket(
-    bucketId as `0x${string}`,
-    gasTxOpts
-  );
+  const txHash: `0x${string}` | undefined = await storageHubClient.deleteBucket(bucketId as `0x${string}`, gasTxOpts);
 
   if (!txHash) {
     throw new Error('deleteBucket() did not return a transaction hash');
@@ -138,7 +135,7 @@ export async function deleteBucket(bucketId: string): Promise<boolean> {
   });
 
   if (receipt.status !== 'success') {
-    throw new Error(`Bucket deletion failed: ${txHash}`);
+    throw new Error(`Bucket deletion failed (make sure that the bucket is empty prior to deletion): ${txHash}`);
   }
 
   return true;

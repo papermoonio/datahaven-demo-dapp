@@ -3,6 +3,8 @@ import { useAppState } from '../hooks/useAppState';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
+import { SplitLayout } from '../components/SplitLayout';
+import { dashboardSnippets } from '../config/codeSnippets';
 import type { HealthStatus } from '../types';
 
 export function Dashboard() {
@@ -25,6 +27,7 @@ export function Dashboard() {
 
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
+  const [activeSnippet, setActiveSnippet] = useState('connectWallet');
 
   // Auto-check health when MSP is connected
   useEffect(() => {
@@ -48,12 +51,14 @@ export function Dashboard() {
   const truncateHash = (hash: string) => `${hash.slice(0, 10)}...${hash.slice(-8)}`;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="mt-1 text-dh-300">Connect your wallet, storage provider, and authenticate to get started.</p>
-      </div>
-
+    <SplitLayout
+      snippets={dashboardSnippets}
+      defaultSnippetId="connectWallet"
+      pageTitle="Dashboard"
+      pageDescription="Connect your wallet, storage provider, and authenticate to get started."
+      activeSnippetId={activeSnippet}
+      onSnippetChange={setActiveSnippet}
+    >
       {/* Error Alert */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start justify-between">
@@ -82,7 +87,7 @@ export function Dashboard() {
       {/* Connection Steps */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Step 1: Connect Wallet */}
-        <Card title="1. Connect Wallet">
+        <Card title="1. Connect Wallet" onClick={() => setActiveSnippet('connectWallet')}>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-dh-300">Status</span>
@@ -108,7 +113,7 @@ export function Dashboard() {
         </Card>
 
         {/* Step 2: Connect to MSP */}
-        <Card title="2. Connect to Storage Provider">
+        <Card title="2. Connect to Storage Provider" onClick={() => setActiveSnippet('connectToMsp')}>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-dh-300">Status</span>
@@ -152,7 +157,7 @@ export function Dashboard() {
         </Card>
 
         {/* Step 3: Authenticate */}
-        <Card title="3. Authenticate with Storage Provider">
+        <Card title="3. Authenticate with Storage Provider" onClick={() => setActiveSnippet('authenticateUser')}>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-dh-300">Status</span>
@@ -200,6 +205,6 @@ export function Dashboard() {
           </div>
         </Card>
       )}
-    </div>
+    </SplitLayout>
   );
 }
