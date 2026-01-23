@@ -152,7 +152,7 @@ export function Dashboard() {
         </Card>
 
         {/* Step 3: Authenticate */}
-        <Card title="3. Authenticate">
+        <Card title="3. Authenticate with Storage Provider">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-dh-300">Status</span>
@@ -190,12 +190,12 @@ export function Dashboard() {
         <Card title="Next Steps">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <a href="/buckets" className="block p-4 bg-dh-900 rounded-lg hover:bg-dh-700 transition-colors">
-              <h4 className="font-medium text-white mb-1">Manage Buckets</h4>
+              <h4 className="font-medium text-white mb-1">Manage Buckets (Folders)</h4>
               <p className="text-sm text-dh-300">Create, view, and delete storage buckets.</p>
             </a>
             <a href="/files" className="block p-4 bg-dh-900 rounded-lg hover:bg-dh-700 transition-colors">
               <h4 className="font-medium text-white mb-1">Manage Files</h4>
-              <p className="text-sm text-dh-300">Upload, download, and manage files in your buckets.</p>
+              <p className="text-sm text-dh-300">Upload, download, and manage files in your buckets (folders).</p>
             </a>
           </div>
         </Card>

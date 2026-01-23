@@ -138,7 +138,6 @@ export function Files() {
     }
   }, [selectedBucketId, loadFiles]);
 
-
   const handleBucketChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBucketId(e.target.value);
     setSelectedFile(null);
@@ -243,9 +242,7 @@ export function Files() {
       await requestDeleteFile(selectedBucketId, fileKey);
 
       // Immediately show deletionInProgress status in the UI
-      setFiles((prev) =>
-        prev.map((f) => (f.fileKey === fileKey ? { ...f, status: 'deletionInProgress' } : f))
-      );
+      setFiles((prev) => prev.map((f) => (f.fileKey === fileKey ? { ...f, status: 'deletionInProgress' } : f)));
 
       // Poll until the file is gone
       const poll = async () => {
@@ -358,7 +355,7 @@ export function Files() {
       )}
 
       {/* Bucket Selector */}
-      <Card title="Select Bucket">
+      <Card title="Select Bucket (Folder)">
         <div className="flex items-center space-x-4">
           <select
             value={selectedBucketId}
@@ -431,7 +428,7 @@ export function Files() {
         </Card>
 
         {/* File List */}
-        <Card title="Files in Bucket" className="lg:col-span-2">
+        <Card title="Files in Bucket (Folder)" className="lg:col-span-2">
           <div className="space-y-4">
             <div className="flex justify-end">
               <Button variant="secondary" size="sm" onClick={loadFiles} isLoading={isLoadingFiles}>

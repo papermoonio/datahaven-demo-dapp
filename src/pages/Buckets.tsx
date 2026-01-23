@@ -172,8 +172,8 @@ export function Buckets() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Buckets</h1>
-        <p className="mt-1 text-dh-300">Create and manage your storage buckets.</p>
+        <h1 className="text-2xl font-bold text-white">Buckets (Folders)</h1>
+        <p className="mt-1 text-dh-300">Create and manage your storage buckets (folders).</p>
       </div>
 
       {/* Error Alert */}
@@ -185,11 +185,11 @@ export function Buckets() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Create Bucket Form */}
-        <Card title="Create Bucket" className="lg:col-span-1">
+        <Card title="Create Bucket (Folder)" className="lg:col-span-1">
           <form onSubmit={handleCreateBucket} className="space-y-4">
             <div>
               <label htmlFor="bucketName" className="block text-sm font-medium text-dh-200 mb-1">
-                Bucket Name
+                Bucket (Folder) Name
               </label>
               <input
                 type="text"
@@ -249,7 +249,7 @@ export function Buckets() {
               }
               className="w-full"
             >
-              Create Bucket
+              Create Bucket (Folder)
             </Button>
 
             {createProgress.step !== 'idle' && (
@@ -261,7 +261,7 @@ export function Buckets() {
         </Card>
 
         {/* Bucket List */}
-        <Card title="Your Buckets" className="lg:col-span-2">
+        <Card title="Your Buckets (Folders)" className="lg:col-span-2">
           <div className="space-y-4">
             <div className="flex justify-end">
               <Button variant="secondary" size="sm" onClick={loadBuckets} isLoading={isLoadingBuckets}>
