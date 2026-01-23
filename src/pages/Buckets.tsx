@@ -15,7 +15,7 @@ import { EyeIcon, TrashIcon } from '../components/Icons';
 import type { Bucket, BucketInfo, BucketCreationProgress } from '../types';
 
 export function Buckets() {
-  const { isAuthenticated, isMspConnected } = useAppState();
+  const { isAuthenticated, isMspConnected, handleAuthError } = useAppState();
 
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [selectedBucket, setSelectedBucket] = useState<BucketInfo | null>(null);
@@ -41,11 +41,13 @@ export function Buckets() {
       const data = await getBucketsFromMSP();
       setBuckets(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load buckets');
+      if (!handleAuthError(err)) {
+        setError(err instanceof Error ? err.message : 'Failed to load buckets');
+      }
     } finally {
       setIsLoadingBuckets(false);
     }
-  }, [isMspConnected]);
+  }, [isMspConnected, handleAuthError]);
 
   useEffect(() => {
     if (isMspConnected) {

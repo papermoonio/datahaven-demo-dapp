@@ -27,7 +27,7 @@ interface FileEntry {
 }
 
 export function Files() {
-  const { isAuthenticated, isMspConnected } = useAppState();
+  const { isAuthenticated, isMspConnected, handleAuthError } = useAppState();
 
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [selectedBucketId, setSelectedBucketId] = useState<string>('');
@@ -58,11 +58,13 @@ export function Files() {
         setSelectedBucketId(data[0].bucketId);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load buckets');
+      if (!handleAuthError(err)) {
+        setError(err instanceof Error ? err.message : 'Failed to load buckets');
+      }
     } finally {
       setIsLoadingBuckets(false);
     }
-  }, [isMspConnected, selectedBucketId]);
+  }, [isMspConnected, selectedBucketId, handleAuthError]);
 
   const loadFiles = useCallback(async () => {
     if (!selectedBucketId) {
@@ -120,11 +122,13 @@ export function Files() {
       const fileList = flattenTree(response.files || []);
       setFiles(fileList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load files');
+      if (!handleAuthError(err)) {
+        setError(err instanceof Error ? err.message : 'Failed to load files');
+      }
     } finally {
       setIsLoadingFiles(false);
     }
-  }, [selectedBucketId]);
+  }, [selectedBucketId, handleAuthError]);
 
   useEffect(() => {
     if (isMspConnected) {

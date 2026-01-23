@@ -24,4 +24,6 @@ export {
   isAuthenticated,
   getUserProfile,
   disconnectMsp,
+  clearSession,
+  isAuthError,
 } from './mspService';

@@ -16,6 +16,8 @@ import {
   disconnectMsp,
   isAuthenticated as checkAuth,
   getUserProfile,
+  clearSession,
+  isAuthError,
 } from '../services/mspService';
 import type { AppState, InfoResponse, UserInfo, HealthStatus } from '../types';
 
@@ -25,6 +27,7 @@ export interface AppContextType extends AppState {
   connectMsp: () => Promise<void>;
   authenticateUser: () => Promise<void>;
   getMspHealthStatus: () => Promise<HealthStatus>;
+  handleAuthError: (error: unknown) => boolean;
   isLoading: boolean;
   error: string | null;
   clearError: () => void;
@@ -138,6 +141,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const handleAuthError = useCallback((error: unknown): boolean => {
+    if (isAuthError(error)) {
+      clearSession();
+      setState((prev) => ({
+        ...prev,
+        isAuthenticated: false,
+        userProfile: null,
+      }));
+      setError('Session expired. Please re-authenticate.');
+      return true;
+    }
+    return false;
+  }, []);
+
   // Restore session from storage on mount
   useEffect(() => {
     const restoreSession = async () => {
@@ -199,6 +216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     connectMsp,
     authenticateUser,
     getMspHealthStatus,
+    handleAuthError,
     isLoading,
     error,
     clearError,

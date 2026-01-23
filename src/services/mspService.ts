@@ -128,15 +128,25 @@ export function getUserProfile(): UserInfo | null {
   return authenticatedUserProfile;
 }
 
-// Reset MSP connection
-export function disconnectMsp() {
-  mspClientInstance = null;
+// Clear auth session (used when server returns 401)
+export function clearSession() {
   sessionToken = undefined;
   authenticatedUserProfile = null;
 
-  // Clear session storage
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem(SESSION_TOKEN_KEY);
     sessionStorage.removeItem(USER_PROFILE_KEY);
   }
+}
+
+// Check if an error is a 401 auth error
+export function isAuthError(error: unknown): boolean {
+  const err = error as { status?: number; response?: { status?: number } };
+  return err?.status === 401 || err?.response?.status === 401;
+}
+
+// Reset MSP connection
+export function disconnectMsp() {
+  mspClientInstance = null;
+  clearSession();
 }
