@@ -34,7 +34,7 @@ export function SplitLayout({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       {/* Page Header with Toggle */}
       <div className="flex items-center justify-between">
         <div>
@@ -47,14 +47,14 @@ export function SplitLayout({
       {/* Conditional Split Grid */}
       {isCodePanelOpen ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div className="xl:sticky xl:top-8 xl:self-start">
+          <div className="hidden sm:block xl:sticky xl:top-8 xl:self-start">
             <CodePanel
               snippets={snippets}
               activeSnippetId={currentSnippetId}
               onSnippetSelect={handleSnippetSelect}
             />
           </div>
-          <div className="space-y-6 split-content">{children}</div>
+          <div className="space-y-6 split-content min-w-0">{children}</div>
         </div>
       ) : (
         <>{children}</>

@@ -41,11 +41,17 @@ body {
   min-height: 100vh;
 }
 
-/* Force single-column grids inside the split-view content pane */
-.split-content .grid {
-  grid-template-columns: 1fr !important;
-}
-.split-content .lg\:col-span-1,
-.split-content .lg\:col-span-2 {
-  grid-column: span 1 !important;
+/* Force single-column grids inside the split-view content pane (only when code panel is visible) */
+@media (min-width: 640px) {
+  .split-content .grid {
+    grid-template-columns: 1fr !important;
+  }
+  .split-content .lg\:col-span-1,
+  .split-content .lg\:col-span-2 {
+    grid-column: span 1 !important;
+  }
+  .split-content .md\:grid-cols-2,
+  .split-content .md\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
 }
