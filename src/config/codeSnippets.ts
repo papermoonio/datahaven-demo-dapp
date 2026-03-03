@@ -246,7 +246,7 @@ export async function uploadFile(
   // Upload file data to MSP (verified against on-chain fingerprint)
   const uploadReceipt = await mspClient.files.uploadFile(
     bucketId, fileKey.toHex(), fileBlob,
-    address, file.name
+     fingerprint.toHex(), address, file.name
   );
 
   return { fileKey: fileKey.toHex(), uploadReceipt };

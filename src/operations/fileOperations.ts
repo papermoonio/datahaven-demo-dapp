@@ -15,7 +15,10 @@ import { getMspClient, getMspInfo, authenticateUser, isAuthenticated } from '../
 import type { PalletFileSystemStorageRequestMetadata } from '@polkadot/types/lookup';
 
 // Upload a file
-export async function uploadFile(bucketId: string, file: File): Promise<{ fileKey: string; uploadReceipt: unknown }> {
+export async function uploadFile(
+  bucketId: `0x${string}`,
+  file: File
+): Promise<{ fileKey: `0x${string}`; uploadReceipt: unknown }> {
   const storageHubClient = getStorageHubClient();
   const publicClient = getPublicClient();
   const polkadotApi = getPolkadotApi();
@@ -97,7 +100,8 @@ export async function uploadFile(bucketId: string, file: File): Promise<{ fileKe
   const registry = new TypeRegistry();
   const owner = registry.createType('AccountId20', address) as AccountId20;
   const bucketIdH256 = registry.createType('H256', bucketId) as H256;
-  const fileKey = await fileManager.computeFileKey(owner, bucketIdH256, file.name);
+  const fileKeyH256 = await fileManager.computeFileKey(owner, bucketIdH256, file.name);
+  const fileKey = fileKeyH256.toHex() as `0x${string}`;
 
   // Verify storage request on chain
   const storageRequest = await polkadotApi.query.fileSystem.storageRequests(fileKey);
@@ -112,17 +116,24 @@ export async function uploadFile(bucketId: string, file: File): Promise<{ fileKe
 
   // Upload file to MSP
   const fileBlob = await fileManager.getFileBlob();
-  const uploadReceipt = await mspClient.files.uploadFile(bucketId, fileKey.toHex(), fileBlob, address, file.name);
+  const uploadReceipt = await mspClient.files.uploadFile(
+    bucketId,
+    fileKey,
+    fileBlob,
+    fingerprint.toHex(),
+    address,
+    file.name
+  );
 
   if (uploadReceipt.status !== 'upload_successful') {
     throw new Error('File upload to MSP failed');
   }
 
-  return { fileKey: fileKey.toHex(), uploadReceipt };
+  return { fileKey, uploadReceipt };
 }
 
 // Wait for MSP to confirm on chain
-export async function waitForMSPConfirmOnChain(fileKey: string): Promise<void> {
+export async function waitForMSPConfirmOnChain(fileKey: `0x${string}`): Promise<void> {
   const polkadotApi = getPolkadotApi();
   const maxAttempts = 20;
   const delayMs = 2000;
@@ -148,7 +159,7 @@ export async function waitForMSPConfirmOnChain(fileKey: string): Promise<void> {
 }
 
 // Wait for backend to mark file as ready
-export async function waitForBackendFileReady(bucketId: string, fileKey: string): Promise<FileInfo> {
+export async function waitForBackendFileReady(bucketId: `0x${string}`, fileKey: `0x${string}`): Promise<FileInfo> {
   const mspClient = getMspClient();
   const maxAttempts = 60; // 5 minutes with 5s delay
   const delayMs = 5000;
@@ -202,7 +213,7 @@ export async function downloadFile(fileKey: string): Promise<Blob> {
 }
 
 // Delete a file
-export async function requestDeleteFile(bucketId: string, fileKey: string): Promise<boolean> {
+export async function requestDeleteFile(bucketId: `0x${string}`, fileKey: `0x${string}`): Promise<boolean> {
   const storageHubClient = getStorageHubClient();
   const publicClient = getPublicClient();
   const mspClient = getMspClient();
@@ -229,14 +240,14 @@ export async function requestDeleteFile(bucketId: string, fileKey: string): Prom
 }
 
 // Get files in a bucket
-export async function getBucketFilesFromMSP(bucketId: string): Promise<FileListResponse> {
+export async function getBucketFilesFromMSP(bucketId: `0x${string}`): Promise<FileListResponse> {
   const mspClient = getMspClient();
   const files: FileListResponse = await mspClient.buckets.getFiles(bucketId);
   return files;
 }
 
 // Get file info
-export async function getFileInfo(bucketId: string, fileKey: string): Promise<StorageFileInfo> {
+export async function getFileInfo(bucketId: `0x${string}`, fileKey: `0x${string}`): Promise<StorageFileInfo> {
   const mspClient = getMspClient();
   const fileInfo = await mspClient.files.getFileInfo(bucketId, fileKey);
   return fileInfo;
